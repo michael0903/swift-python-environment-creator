@@ -1,0 +1,44 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+venv/
+
+# Environment files (potentially sensitive)
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ConPort database and vector data (local project context)
+context_portal/
+!context_portal/.gitkeep
+
+# Generated logs and reports
+logs/
+reports/
+*.log
+
+# Dynamically generated files (created by SPEC scripts)
+tests/pytest_settings.py
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
