@@ -34,6 +34,11 @@ reports/
 # Dynamically generated files (created by SPEC scripts)
 tests/pytest_settings.py
 
+# Files that are generated per-project (should not be in SPEC repository)
+main.py
+pyproject.toml
+uv.lock
+
 # OS generated files
 .DS_Store
 .DS_Store?

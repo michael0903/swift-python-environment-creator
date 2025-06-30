@@ -13,28 +13,21 @@ It performs the following steps:
     *   `scripts`
     *   `src/package` (with `__init__.py`)
     *   `tests`
-    *   `.vscode`
 4.  **Virtual Environment Setup:** Creates a uv-managed virtual environment (.venv).
     If an environment already exists, it is removed and recreated.
 5.  **Core Dependency Installation:** Installs essential testing packages (`pytest`,
     `pytest-html`, `pytest-mock`, `loguru`, `pathvalidate`) using uv.
 6.  **Configuration File Generation:** Creates dynamic configuration files tailored
     to the environment:
-    *   `.vscode/settings.json`: Configures VS Code to use the project's virtual
-      environment interpreter and enables format-on-save.
-    *   `.vscode/launch.json`: Provides a basic debug configuration for running
-      the current Python file in VS Code.
-    *   `.env`: Sets environment variables for the development environment.
+    *   `tests/conftest.py`: Provides pytest fixtures and configuration for testing.
 
 **Key Features:**
 
 *   **UV-Based:** Uses uv for ultra-fast dependency resolution and installation.
 *   **Modern Project Structure:** Creates pyproject.toml-based project layout.
-*   **Cross-Platform:** Generates configurations that work on Windows, macOS, and Linux.
+*   **Cross-Platform:** Works on Windows, macOS, and Linux.
 *   **Automated Virtual Environment:** Creates and configures uv-managed .venv.
-*   **Basic Testing Setup:** Installs `pytest` and common plugins.
-*   **VS Code Integration:** Pre-configures VS Code settings and launch configurations.
-*   **Environment Variable Setup:** Creates a `.env` file for easy environment management.
+*   **Modern Testing Setup:** Installs `pytest` with consolidated configuration in pyproject.toml.
 
 **Assumptions:**
 
@@ -169,11 +162,8 @@ except ImportError:
 # --- Constants and Configuration ---
 # These files will be created by the script
 DYNAMIC_FILES = [
-    ".vscode/settings.json",
-    ".vscode/launch.json",
-    ".env",
     "pyproject.toml",
-    "tests/pytest_settings.py",
+    "tests/conftest.py",
 ]
 
 # --- Helper Functions ---
@@ -366,113 +356,71 @@ addopts = "--html=reports/report.html --self-contained-html"
         logger.success("Created basic pyproject.toml")
 
 
-def create_pytest_settings():
-    """Create the tests/pytest_settings.py file with dynamic project information."""
-    project_name = os.path.basename(os.getcwd())
+def create_conftest():
+    """Create the tests/conftest.py file with basic pytest fixtures and configuration."""
 
-    pytest_settings_content = f'''# tests/pytest_settings.py
+    conftest_content = '''# tests/conftest.py
+"""
+Pytest configuration file for shared fixtures and test settings.
+All test files in this directory and subdirectories can use these fixtures.
+"""
 
 import pytest
 import sys
-import platform
-from datetime import datetime
+import os
+from pathlib import Path
 
-# --- pytest-html Configuration Hooks ---
-
-
-def pytest_configure(config):
-    """
-    Adds environment metadata to the HTML report.
-    """
-    # Basic environment details
-    config._metadata["Python version"] = sys.version.split()[0]
-    config._metadata["Platform"] = platform.system() + " " + platform.release()
-    config._metadata["Pytest version"] = pytest.__version__
-    config._metadata["Project Name"] = "{project_name}"
-    # You can add more project-specific metadata here
-    # config._metadata['Backend URL'] = os.getenv("BACKEND_URL", "N/A")
-    # config._metadata['Tested Branch'] = get_git_branch() # Example custom function
-
-    # Optionally remove some default metadata if it's too noisy
-    # config._metadata.pop("JAVA_HOME", None)
-    # config._metadata.pop("Packages", None)
-    # config._metadata.pop("Plugins", None)
+# Add the src directory to Python path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
-# Uncomment if you want to customize the HTML report title:
-# def pytest_html_report_title(report):
-#     """
-#     Sets a custom title for the HTML report.
-#     """
-#     report.title = f"{project_name} Test Report ({{datetime.now():%Y-%m-%d %H:%M}})"
+# --- Common Fixtures ---
+
+@pytest.fixture
+def project_root():
+    """Return the project root directory path."""
+    return Path(__file__).parent.parent
 
 
-# Optional: Customize the results table
-# This adds a 'Description' column populated from the test function's docstring
-# and modifies the 'Test' column link.
+@pytest.fixture
+def sample_data():
+    """Provide common test data."""
+    return {
+        "id": 123,
+        "name": "Test Item",
+        "value": 99.9,
+        "active": True
+    }
 
 
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    """
-    Hook wrapper to access test outcome for adding details to the report.
-    """
-    outcome = yield
-    report = outcome.get_result()
-    # Store the docstring in an attribute of the report object
-    report.description = str(item.function.__doc__) if item.function.__doc__ else ""
-    # Store the nodeid (test path) for potential linking
-    report.nodeid = item.nodeid
+# --- Example Fixtures (uncomment and modify as needed) ---
 
+# @pytest.fixture(scope="session")
+# def database_connection():
+#     """Create a database connection for the test session."""
+#     # Setup code here
+#     connection = create_test_db_connection()
+#     yield connection
+#     # Teardown code here
+#     connection.close()
 
-def pytest_html_results_table_header(cells):
-    """
-    Modifies the header row of the results table.
-    Adds a 'Description' column.
-    """
-    cells.insert(2, "<th>Description</th>")  # Add Description header after 'Test'
-    # Optional: Remove a column, e.g., 'Links'
-    # cells.pop()
-
-
-def pytest_html_results_table_row(report, cells):
-    """
-    Modifies each row in the results table.
-    Adds the test's docstring (stored earlier) to the 'Description' cell.
-    """
-    cells.insert(
-        2, f"<td>{{getattr(report, 'description', '')}}</td>"
-    )  # Add description cell
-    # Optional: Remove a column cell
-    # cells.pop()
-
-
-# --- Optional: Shared Fixtures ---
-
-# If you have common setup/teardown logic or data needed by multiple
-# test files, you would define shared fixtures here.
-
-# Example: A fixture providing a reusable API client instance
-# @pytest.fixture(scope="session") # 'session' scope means it runs once per test session
-# def api_client():
-#     from my_project.api import APIClient
-#     # Configuration could come from env vars or config files
-#     client = APIClient(base_url="http://test.api.example.com")
-#     yield client
-#     # Teardown code if needed (e.g., client.close())
-
-# Example: A fixture providing common test data
 # @pytest.fixture
-# def sample_payload():
-#     return {{"id": 123, "name": "Test Item", "value": 99.9}}
+# def temp_file(tmp_path):
+#     """Create a temporary file for testing."""
+#     file_path = tmp_path / "test_file.txt"
+#     file_path.write_text("test content")
+#     return file_path
 
-# Tests in any test_*.py file within tests/ or its subdirectories can then use these:
-# def test_api_endpoint(api_client, sample_payload):
-#     response = api_client.post("/items", json=sample_payload)
-#     assert response.status_code == 201
+# @pytest.fixture
+# def mock_api_response():
+#     """Mock API response for testing."""
+#     return {
+#         "status": "success",
+#         "data": {"message": "Test response"}
+#     }
 '''
 
-    create_file(os.path.join("tests", "pytest_settings.py"), pytest_settings_content)
+    create_file(os.path.join("tests", "conftest.py"), conftest_content)
 
 
 # Main function
@@ -492,7 +440,6 @@ def main():
     create_directory("scripts")
     create_directory("src/package")
     create_directory("tests")
-    create_directory(".vscode")
     create_directory("reports")  # For test reports
 
     # Create __init__.py in package
@@ -512,66 +459,7 @@ def main():
     update_pyproject_toml()
 
     # Create dynamic files
-    # Create the VS Code settings file with executable path
-    venv_python = (
-        ".venv/Scripts/python.exe" if system == "Windows" else ".venv/bin/python"
-    )
-
-    vscode_settings = f"""{{
-    "python.defaultInterpreterPath": "${{workspaceFolder}}/{venv_python}",
-    "editor.formatOnSave": true,
-    "python.envFile": "${{workspaceFolder}}/.env",
-    "python.terminal.activateEnvironment": true,
-    "python.testing.pytestEnabled": true,
-    "python.testing.pytestArgs": [
-        "tests"
-    ],
-    "python.testing.unittestEnabled": false
-}}
-"""
-    create_file(os.path.join(".vscode", "settings.json"), vscode_settings)
-
-    # Create the VS Code launch configuration file
-    vscode_launch = """{
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python: Current File",
-            "type": "python",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "envFile": "${workspaceFolder}/.env"
-        },
-        {
-            "name": "Python: Run Tests",
-            "type": "python",
-            "request": "launch",
-            "module": "pytest",
-            "args": ["tests", "-v"],
-            "console": "integratedTerminal",
-            "justMyCode": false
-        }
-    ]
-}
-"""
-    create_file(os.path.join(".vscode", "launch.json"), vscode_launch)
-
-    # Create the .env file for environment variables
-    venv_bin = ".venv/Scripts" if system == "Windows" else ".venv/bin"
-    path_sep = ";" if system == "Windows" else ":"
-
-    env_file_content = f"""# Environment variables for Python
-PYTHONPATH=${{workspaceFolder}}
-VIRTUAL_ENV=${{workspaceFolder}}/.venv
-PATH=${{workspaceFolder}}/{venv_bin}{path_sep}${{PATH}}
-
-# Project-specific settings
-PROJECT_ROOT=${{workspaceFolder}}
-TEST_REPORTS_DIR=${{workspaceFolder}}/reports
-"""
-    create_file(".env", env_file_content)
+    create_conftest()
 
     # Display helpful messages on what to do next
     logger.success("SPEC project setup complete!")
@@ -599,12 +487,13 @@ TEST_REPORTS_DIR=${{workspaceFolder}}/reports
     logger.info("4. Update pyproject.toml with your project details")
 
     logger.info("Project files created:")
-    logger.info("  - pyproject.toml: Modern Python project configuration")
+    logger.info(
+        "  - pyproject.toml: Modern Python project configuration with pytest settings"
+    )
     logger.info("  - .venv/: Virtual environment managed by uv")
-    logger.info("  - .vscode/: VS Code configuration")
     logger.info("  - src/package/: Your main package source code")
-    logger.info("  - tests/: Test files")
-    logger.info("  - reports/: Test report output")
+    logger.info("  - tests/conftest.py: Pytest configuration and shared fixtures")
+    logger.info("  - reports/: Test report output directory")
 
 
 if __name__ == "__main__":
